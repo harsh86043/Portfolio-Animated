@@ -1,0 +1,6 @@
+{
+  "name": "Harsh Suryavanshi Portfolio",
+  "description": "A high-end cinematic, interactive, 3D-looking animated portfolio website inspired by the visual feel of GTA VI, featuring scroll-driven storytelling, SVG masking, smooth avatar transitions, and immersive motion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
