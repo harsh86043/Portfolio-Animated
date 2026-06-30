@@ -6,7 +6,7 @@ import ProjectOperations from "./components/ProjectOperations";
 import CareerOperationsLog from "./components/CareerOperationsLog";
 import SecureTransmission from "./components/SecureTransmission";
 import { PERSONAL_INFO } from "./data";
-import { Shield, ArrowUp } from "lucide-react";
+import { Shield, ArrowUp, Menu, X } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
@@ -64,6 +64,7 @@ export default function App() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("hero-section");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Smooth scroll jump helper utilizing ScrollTrigger progress when available
   const scrollToScrollTriggerProgress = (
@@ -125,6 +126,8 @@ export default function App() {
     if (e) {
       e.preventDefault();
     }
+
+    setMobileMenuOpen(false);
 
     const target = navTargets[sectionId];
     if (!target) return;
@@ -260,7 +263,7 @@ export default function App() {
         <div className="absolute inset-0 scanlines pointer-events-none z-30 opacity-[0.1]" />
   
         {/* 2. Top Minimalist Tactical Navigation Header */}
-        <header className="fixed top-0 inset-x-0 h-20 bg-white/5 backdrop-blur-md border-b border-white/10 z-50 flex items-center justify-between px-6 md:px-12 lg:px-16 select-none">
+        <header className="fixed top-0 inset-x-0 h-20 bg-white/5 backdrop-blur-md border-b border-white/10 z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 lg:px-16 select-none">
           {/* Logo Name */}
           <button
             onClick={() => navigateToSection("hero-section")}
@@ -306,12 +309,53 @@ export default function App() {
             ))}
           </nav>
   
-          {/* Small Status Tag (Top Right) */}
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-white/60 font-mono text-[9px] tracking-widest uppercase">
-            <Shield className="w-3 h-3 text-purple-400" />
-            <span className="font-bold">SECURE PORTAL</span>
+          {/* Right Controls - Secure Portal Badge + Hamburger Button */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-white/60 font-mono text-[9px] tracking-widest uppercase">
+              <Shield className="w-3 h-3 text-purple-400" />
+              <span className="font-bold">SECURE PORTAL</span>
+            </div>
+            
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex p-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg border border-white/10 transition-colors cursor-pointer focus:outline-none"
+              style={{ minWidth: "40px", minHeight: "40px" }}
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </header>
+
+        {/* Mobile Dropdown Menu Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-x-0 top-20 bg-[#050505]/95 backdrop-blur-lg border-b border-white/10 z-40 md:hidden py-6 px-6 shadow-orange-glow cyber-grid-dense flex flex-col gap-3">
+            <div className="font-mono text-[9px] text-[#ff4d00] tracking-widest uppercase mb-1 border-b border-[#ff4d00]/20 pb-2">
+              TACTICAL DIRECTIVES
+            </div>
+            {[
+              { id: "hero-section", label: "HERO" },
+              { id: "about-section", label: "ABOUT" },
+              { id: "skills-section", label: "COMMAND CENTER" },
+              { id: "project-operations", label: "PROJECT OPERATIONS" },
+              { id: "career-operations", label: "CAREER LOG" },
+              { id: "contact", label: "CONTACT" },
+            ].map((node) => (
+              <button
+                key={node.id}
+                onClick={() => navigateToSection(node.id)}
+                className={`w-full py-3 px-4 text-left font-mono text-[10px] tracking-widest uppercase font-bold rounded-lg border transition-all cursor-pointer ${
+                  activeSection === node.id
+                    ? "border-[#ff4d00]/40 text-[#ff4d00] bg-[#ff4d00]/5 shadow-orange-glow"
+                    : "border-transparent text-white/60 hover:text-white hover:bg-white/5"
+                }`}
+                style={{ minHeight: "44px" }}
+              >
+                {node.label}
+              </button>
+            ))}
+          </div>
+        )}
  
         {/* 3. Portfolio Core Content Pinned Sequence */}
         <IntroAboutSequence />

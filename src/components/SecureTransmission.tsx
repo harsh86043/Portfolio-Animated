@@ -199,7 +199,7 @@ export default function SecureTransmission() {
     // Scale canvas to match screen high DPI (DPR) with mobile performance clamping
     const dpr = window.devicePixelRatio || 1;
     const isMobileDevice = window.innerWidth < 768;
-    const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
+    const cappedDpr = Math.min(dpr, isMobileDevice ? 1.25 : 1.5);
     const targetW = width * cappedDpr;
     const targetH = height * cappedDpr;
 

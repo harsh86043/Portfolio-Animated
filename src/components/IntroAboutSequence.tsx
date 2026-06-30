@@ -282,9 +282,9 @@ export default function IntroAboutSequence() {
             ======================================================== */}
         <div
           ref={aboutRef}
-          className="absolute inset-y-0 right-0 lg:right-16 xl:right-24 flex items-center justify-center lg:justify-end px-4 md:px-8 z-30 w-full lg:w-[42vw] max-w-full md:max-w-2xl pointer-events-none"
+          className="absolute inset-x-0 bottom-6 lg:inset-y-0 lg:right-16 xl:right-24 lg:left-auto flex items-end lg:items-center justify-center lg:justify-end px-4 sm:px-6 md:px-8 z-30 w-full lg:w-[42vw] max-w-full md:max-w-2xl pointer-events-none"
         >
-          <div className="w-full bg-black/80 lg:bg-black/35 backdrop-blur-[14px] lg:backdrop-blur-[8px] border border-white/10 lg:border-white/8 p-6 md:p-10 rounded-[24px] shadow-2xl pointer-events-auto flex flex-col gap-6 select-none">
+          <div className="w-full max-h-[72vh] overflow-y-auto bg-black/90 lg:bg-black/35 backdrop-blur-[14px] lg:backdrop-blur-[8px] border border-white/10 lg:border-white/8 p-5 sm:p-6 md:p-10 rounded-[24px] shadow-2xl pointer-events-auto flex flex-col gap-4 sm:gap-6 select-none">
             {/* Header */}
             <div className="flex flex-col gap-1.5 border-b border-white/10 pb-4">
               <div className="flex items-center gap-2 text-[#ff4d00] font-mono text-[9px] tracking-[0.3em] uppercase font-bold">

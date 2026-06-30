@@ -300,7 +300,7 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
       const isMobileDevice = window.innerWidth < 768;
-      const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
+      const cappedDpr = Math.min(dpr, isMobileDevice ? 1.25 : 1.5);
       
       canvas.width = window.innerWidth * cappedDpr;
       canvas.height = window.innerHeight * cappedDpr;
@@ -319,7 +319,7 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
     // Initial resize setup with DPR Clamp
     const dpr = window.devicePixelRatio || 1;
     const isMobileDevice = window.innerWidth < 768;
-    const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
+    const cappedDpr = Math.min(dpr, isMobileDevice ? 1.25 : 1.5);
     canvas.width = window.innerWidth * cappedDpr;
     canvas.height = window.innerHeight * cappedDpr;
     const ctx = canvas.getContext("2d");
