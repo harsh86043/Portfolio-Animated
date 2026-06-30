@@ -1,6 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import MaskedIntro from "./components/MaskedIntro";
 import IntroAboutSequence from "./components/IntroAboutSequence";
+import EngineeringCommandCenter from "./components/EngineeringCommandCenter";
+import ProjectOperations from "./components/ProjectOperations";
+import CareerOperationsLog from "./components/CareerOperationsLog";
+import SecureTransmission from "./components/SecureTransmission";
 import { PERSONAL_INFO } from "./data";
 import { Shield, ArrowUp } from "lucide-react";
 
@@ -14,7 +18,27 @@ export default function App() {
     if (sectionId === "hero-section") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (sectionId === "about-section") {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      window.scrollTo({ top: window.innerHeight * 1.7, behavior: "smooth" });
+    } else if (sectionId === "skills-section") {
+      const el = document.getElementById("skills-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    } else if (sectionId === "project-operations") {
+      const el = document.getElementById("project-operations");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    } else if (sectionId === "career-operations") {
+      const el = document.getElementById("career-operations");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    } else if (sectionId === "contact") {
+      const el = document.getElementById("contact");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -22,13 +46,80 @@ export default function App() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      const maxScroll = document.body.scrollHeight - window.innerHeight;
-      const progress = maxScroll > 0 ? scrollPosition / maxScroll : 0;
+
+      // -1. Check if Contact section is visible (at least 45% in viewport)
+      const contactEl = document.getElementById("contact");
+      if (contactEl) {
+        const rect = contactEl.getBoundingClientRect();
+        if (rect.top <= window.innerHeight * 0.55) {
+          setActiveSection("contact");
+          if (scrollPosition > 300) {
+            setShowScrollTop(true);
+          } else {
+            setShowScrollTop(false);
+          }
+          return;
+        }
+      }
+
+      // 0. Check if Career Operations section is visible (at least 45% in viewport)
+      const careerEl = document.getElementById("career-operations");
+      if (careerEl) {
+        const rect = careerEl.getBoundingClientRect();
+        if (rect.top <= window.innerHeight * 0.55) {
+          setActiveSection("career-operations");
+          if (scrollPosition > 300) {
+            setShowScrollTop(true);
+          } else {
+            setShowScrollTop(false);
+          }
+          return;
+        }
+      }
+
+      // 1. Check if Project Operations section is visible (at least 45% in viewport)
+      const opsEl = document.getElementById("project-operations");
+      if (opsEl) {
+        const rect = opsEl.getBoundingClientRect();
+        if (rect.top <= window.innerHeight * 0.55) {
+          setActiveSection("project-operations");
+          if (scrollPosition > 300) {
+            setShowScrollTop(true);
+          } else {
+            setShowScrollTop(false);
+          }
+          return;
+        }
+      }
       
-      if (progress >= 0.5) {
-        setActiveSection("about-section");
-      } else {
-        setActiveSection("hero-section");
+      // 1.5. Check if Skills section is visible (at least 45% in viewport)
+      const skillsEl = document.getElementById("skills-section");
+      if (skillsEl) {
+        const rect = skillsEl.getBoundingClientRect();
+        if (rect.top <= window.innerHeight * 0.55) {
+          setActiveSection("skills-section");
+          if (scrollPosition > 300) {
+            setShowScrollTop(true);
+          } else {
+            setShowScrollTop(false);
+          }
+          return;
+        }
+      }
+
+      // 2. Otherwise, check progress of the IntroAboutSequence pinned container
+      const introAboutEl = document.getElementById("intro-about-container");
+      if (introAboutEl) {
+        const rect = introAboutEl.getBoundingClientRect();
+        const totalHeight = introAboutEl.offsetHeight; // which is 300vh
+        const scrollRange = totalHeight - window.innerHeight; // 2 * innerHeight
+        const progress = -rect.top / scrollRange;
+        
+        if (progress >= 0.45) {
+          setActiveSection("about-section");
+        } else {
+          setActiveSection("hero-section");
+        }
       }
 
       if (scrollPosition > 300) {
@@ -79,6 +170,10 @@ export default function App() {
             {[
               { id: "hero-section", label: "HERO" },
               { id: "about-section", label: "ABOUT" },
+              { id: "skills-section", label: "COMMAND CENTER" },
+              { id: "project-operations", label: "PROJECT OPERATIONS" },
+              { id: "career-operations", label: "CAREER LOG" },
+              { id: "contact", label: "CONTACT" },
             ].map((node) => (
               <button
                 key={node.id}
@@ -103,9 +198,21 @@ export default function App() {
             <span className="font-bold">SECURE PORTAL</span>
           </div>
         </header>
-
+ 
         {/* 3. Portfolio Core Content Pinned Sequence */}
         <IntroAboutSequence />
+ 
+        {/* 3.5. Engineering Command Center Section */}
+        <EngineeringCommandCenter />
+ 
+        {/* 3.6. Project Operations Section */}
+        <ProjectOperations />
+
+        {/* 3.7. Career Operations Log Section */}
+        <CareerOperationsLog />
+
+        {/* 3.8. Secure Transmission Section */}
+        <SecureTransmission />
 
         {/* 4. Cinematic Footer */}
         <footer className="relative w-full bg-[#050505] border-t border-white/5 py-12 px-6 md:px-12 select-none z-10 text-center font-mono text-[10px] text-white/40 tracking-wider">
