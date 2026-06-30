@@ -7,37 +7,148 @@ import CareerOperationsLog from "./components/CareerOperationsLog";
 import SecureTransmission from "./components/SecureTransmission";
 import { PERSONAL_INFO } from "./data";
 import { Shield, ArrowUp } from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
+
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+interface NavTarget {
+  id: string;
+  type: "normal" | "scrollTriggerProgress";
+  triggerId?: string;
+  progress?: number;
+  fallbackId?: string;
+}
+
+const navTargets: Record<string, NavTarget> = {
+  "hero-section": {
+    id: "hero-section",
+    type: "scrollTriggerProgress",
+    triggerId: "intro-about-sequence",
+    progress: 0.0,
+    fallbackId: "intro-about-container"
+  },
+  "about-section": {
+    id: "about-section",
+    type: "scrollTriggerProgress",
+    triggerId: "intro-about-sequence",
+    progress: 1.0,
+    fallbackId: "intro-about-container"
+  },
+  "skills-section": {
+    id: "skills-section",
+    type: "normal",
+    fallbackId: "skills-section"
+  },
+  "project-operations": {
+    id: "project-operations",
+    type: "normal",
+    fallbackId: "project-operations"
+  },
+  "career-operations": {
+    id: "career-operations",
+    type: "normal",
+    fallbackId: "career-operations"
+  },
+  "contact": {
+    id: "contact",
+    type: "scrollTriggerProgress",
+    triggerId: "contact-sequence",
+    progress: 0.85,
+    fallbackId: "contact"
+  }
+};
 
 export default function App() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("hero-section");
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Smooth scroll jump helper
-  const navigateToSection = (sectionId: string) => {
-    if (sectionId === "hero-section") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (sectionId === "about-section") {
-      window.scrollTo({ top: window.innerHeight * 1.7, behavior: "smooth" });
-    } else if (sectionId === "skills-section") {
-      const el = document.getElementById("skills-section");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
+  // Smooth scroll jump helper utilizing ScrollTrigger progress when available
+  const scrollToScrollTriggerProgress = (
+    triggerId: string,
+    progress: number,
+    fallbackElementId: string,
+    attempt = 1
+  ) => {
+    const trigger = ScrollTrigger.getById(triggerId);
+    if (trigger) {
+      const start = trigger.start;
+      const end = trigger.end;
+      const scrollPos = start + progress * (end - start);
+      
+      gsap.to(window, {
+        scrollTo: scrollPos,
+        duration: 1.2,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          // Force immediate rendering update of frame-sequence
+          ScrollTrigger.update();
+        },
+        onComplete: () => {
+          ScrollTrigger.update();
+        }
+      });
+      return;
+    }
+
+    // Attempt to refresh ScrollTriggers if not initialized yet
+    if (attempt <= 2) {
+      ScrollTrigger.refresh();
+      requestAnimationFrame(() => {
+        scrollToScrollTriggerProgress(triggerId, progress, fallbackElementId, attempt + 1);
+      });
+      return;
+    }
+
+    // Fallback if ScrollTrigger is completely unavailable
+    const el = document.getElementById(fallbackElementId);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const scrollTop = window.scrollY + rect.top;
+      let finalScrollPos = scrollTop;
+      if (fallbackElementId === "intro-about-container") {
+        finalScrollPos = scrollTop + el.offsetHeight * progress;
+      } else if (fallbackElementId === "contact") {
+        finalScrollPos = scrollTop + el.offsetHeight * progress;
       }
-    } else if (sectionId === "project-operations") {
-      const el = document.getElementById("project-operations");
+      gsap.to(window, {
+        scrollTo: finalScrollPos,
+        duration: 1.2,
+        ease: "power2.inOut"
+      });
+    }
+  };
+
+  const navigateToSection = (sectionId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    const target = navTargets[sectionId];
+    if (!target) return;
+
+    if (target.type === "scrollTriggerProgress") {
+      scrollToScrollTriggerProgress(
+        target.triggerId!,
+        target.progress!,
+        target.fallbackId!
+      );
+    } else {
+      const el = document.getElementById(target.fallbackId!);
       if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
-    } else if (sectionId === "career-operations") {
-      const el = document.getElementById("career-operations");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
-    } else if (sectionId === "contact") {
-      const el = document.getElementById("contact");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
+        gsap.to(window, {
+          scrollTo: { y: el, autoKill: false },
+          duration: 1.2,
+          ease: "power2.inOut",
+          onUpdate: () => {
+            ScrollTrigger.update();
+          },
+          onComplete: () => {
+            ScrollTrigger.update();
+          }
+        });
       }
     }
   };
@@ -47,78 +158,81 @@ export default function App() {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
 
-      // -1. Check if Contact section is visible (at least 45% in viewport)
+      // 1. Check if Contact sequence ScrollTrigger is active, or if element is in viewport
+      const contactTrigger = ScrollTrigger.getById("contact-sequence");
       const contactEl = document.getElementById("contact");
-      if (contactEl) {
+      let isContactActive = false;
+
+      if (contactTrigger && contactTrigger.isActive) {
+        isContactActive = true;
+      } else if (contactEl) {
         const rect = contactEl.getBoundingClientRect();
-        if (rect.top <= window.innerHeight * 0.55) {
-          setActiveSection("contact");
-          if (scrollPosition > 300) {
-            setShowScrollTop(true);
-          } else {
-            setShowScrollTop(false);
-          }
-          return;
+        if (rect.top <= window.innerHeight * 0.55 && rect.bottom > 0) {
+          isContactActive = true;
         }
       }
 
-      // 0. Check if Career Operations section is visible (at least 45% in viewport)
+      if (isContactActive) {
+        setActiveSection("contact");
+        setShowScrollTop(scrollPosition > 300);
+        return;
+      }
+
+      // 2. Check if Career Operations section is visible
       const careerEl = document.getElementById("career-operations");
       if (careerEl) {
         const rect = careerEl.getBoundingClientRect();
-        if (rect.top <= window.innerHeight * 0.55) {
+        if (rect.top <= window.innerHeight * 0.55 && rect.bottom > 0) {
           setActiveSection("career-operations");
-          if (scrollPosition > 300) {
-            setShowScrollTop(true);
-          } else {
-            setShowScrollTop(false);
-          }
+          setShowScrollTop(scrollPosition > 300);
           return;
         }
       }
 
-      // 1. Check if Project Operations section is visible (at least 45% in viewport)
+      // 3. Check if Project Operations section is visible
       const opsEl = document.getElementById("project-operations");
       if (opsEl) {
         const rect = opsEl.getBoundingClientRect();
-        if (rect.top <= window.innerHeight * 0.55) {
+        if (rect.top <= window.innerHeight * 0.55 && rect.bottom > 0) {
           setActiveSection("project-operations");
-          if (scrollPosition > 300) {
-            setShowScrollTop(true);
-          } else {
-            setShowScrollTop(false);
-          }
+          setShowScrollTop(scrollPosition > 300);
           return;
         }
       }
       
-      // 1.5. Check if Skills section is visible (at least 45% in viewport)
+      // 4. Check if Skills section is visible
       const skillsEl = document.getElementById("skills-section");
       if (skillsEl) {
         const rect = skillsEl.getBoundingClientRect();
-        if (rect.top <= window.innerHeight * 0.55) {
+        if (rect.top <= window.innerHeight * 0.55 && rect.bottom > 0) {
           setActiveSection("skills-section");
-          if (scrollPosition > 300) {
-            setShowScrollTop(true);
-          } else {
-            setShowScrollTop(false);
-          }
+          setShowScrollTop(scrollPosition > 300);
           return;
         }
       }
 
-      // 2. Otherwise, check progress of the IntroAboutSequence pinned container
-      const introAboutEl = document.getElementById("intro-about-container");
-      if (introAboutEl) {
-        const rect = introAboutEl.getBoundingClientRect();
-        const totalHeight = introAboutEl.offsetHeight; // which is 300vh
-        const scrollRange = totalHeight - window.innerHeight; // 2 * innerHeight
-        const progress = -rect.top / scrollRange;
-        
+      // 5. Check progress of the IntroAboutSequence ScrollTrigger
+      const introAboutTrigger = ScrollTrigger.getById("intro-about-sequence");
+      if (introAboutTrigger) {
+        const progress = introAboutTrigger.progress;
         if (progress >= 0.45) {
           setActiveSection("about-section");
         } else {
           setActiveSection("hero-section");
+        }
+      } else {
+        const introAboutEl = document.getElementById("intro-about-container");
+        if (introAboutEl) {
+          const rect = introAboutEl.getBoundingClientRect();
+          const totalHeight = introAboutEl.offsetHeight;
+          const scrollRange = totalHeight - window.innerHeight;
+          const progress = -rect.top / scrollRange;
+          
+          if (progress >= 0.45) {
+            setActiveSection("about-section");
+          } else {
+            setActiveSection("hero-section");
+          }
         }
       }
 

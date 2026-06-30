@@ -15,16 +15,75 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
   const { onFirstFrameLoaded, onAllFramesLoaded, totalFrames = 97 } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
-  const currentFrameIndexRef = useRef<number>(1);
   const [firstFrameLoadedState, setFirstFrameLoadedState] = useState(false);
   const hasWebpImagesRef = useRef<boolean>(true);
+
+  // Smooth lerping refs
+  const targetFrameRef = useRef<number>(1);
+  const currentFrameRef = useRef<number>(1);
+  const lastDrawnFrameRef = useRef<number>(-1);
+  const rafIdRef = useRef<number | null>(null);
+
+  // Helper to verify if an image is loaded
+  const isFrameLoaded = (index: number): boolean => {
+    const img = imagesRef.current[index - 1];
+    return !!(img && img.complete && img.naturalWidth > 0);
+  };
+
+  // Safe fallback to nearest loaded frame
+  const getNearestLoadedFrameIndex = (targetIndex: number): number => {
+    if (isFrameLoaded(targetIndex)) {
+      return targetIndex;
+    }
+    // Search outward to find closest loaded frame
+    for (let offset = 1; offset < totalFrames; offset++) {
+      const prev = targetIndex - offset;
+      const next = targetIndex + offset;
+      if (prev >= 1 && isFrameLoaded(prev)) return prev;
+      if (next <= totalFrames && isFrameLoaded(next)) return next;
+    }
+    return 1;
+  };
+
+  // requestAnimationFrame render loop
+  const startRenderLoop = () => {
+    if (rafIdRef.current !== null) return;
+
+    const loop = () => {
+      const target = targetFrameRef.current;
+      const current = currentFrameRef.current;
+      const diff = target - current;
+
+      if (Math.abs(diff) < 0.05) {
+        currentFrameRef.current = target;
+        rafIdRef.current = null;
+        const rounded = Math.round(target);
+        if (rounded !== lastDrawnFrameRef.current) {
+          lastDrawnFrameRef.current = rounded;
+          renderFrame(rounded);
+        }
+      } else {
+        // Suggested lerp factor: 0.18 to 0.32
+        const lerpFactor = 0.22;
+        currentFrameRef.current = current + diff * lerpFactor;
+        const rounded = Math.round(currentFrameRef.current);
+        if (rounded !== lastDrawnFrameRef.current) {
+          lastDrawnFrameRef.current = rounded;
+          renderFrame(rounded);
+        }
+        rafIdRef.current = requestAnimationFrame(loop);
+      }
+    };
+
+    rafIdRef.current = requestAnimationFrame(loop);
+  };
 
   // Expose drawFrame to parent
   useImperativeHandle(ref, () => ({
     drawFrame: (index: number) => {
-      const roundedIndex = Math.min(totalFrames, Math.max(1, Math.round(index)));
-      currentFrameIndexRef.current = roundedIndex;
-      renderFrame(roundedIndex);
+      const boundedIndex = Math.min(totalFrames, Math.max(1, index));
+      targetFrameRef.current = boundedIndex;
+      startRenderLoop();
     },
     isLoaded: firstFrameLoadedState
   }));
@@ -201,7 +260,10 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
     const canvasWidth = window.innerWidth;
     const canvasHeight = window.innerHeight;
 
-    const img = imagesRef.current[index - 1];
+    // Use our safe fallback helper to get the nearest loaded frame
+    const loadedIndex = getNearestLoadedFrameIndex(index);
+
+    const img = imagesRef.current[loadedIndex - 1];
     if (!hasWebpImagesRef.current || !img || !img.complete || img.naturalWidth === 0) {
       drawFallbackVector(ctx, index, canvasWidth, canvasHeight);
       return;
@@ -234,10 +296,11 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Handle Resize
+    // Handle Resize with DPR Clamp for mobile performance
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
-      const cappedDpr = Math.min(dpr, 2);
+      const isMobileDevice = window.innerWidth < 768;
+      const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
       
       canvas.width = window.innerWidth * cappedDpr;
       canvas.height = window.innerHeight * cappedDpr;
@@ -248,14 +311,15 @@ const FrameSequenceCanvas = forwardRef<FrameSequenceCanvasRef, FrameSequenceCanv
       }
 
       // Redraw current frame immediately after resize
-      renderFrame(currentFrameIndexRef.current);
+      renderFrame(Math.round(currentFrameRef.current));
     };
 
     window.addEventListener("resize", resizeCanvas);
     
-    // Initial resize setup
+    // Initial resize setup with DPR Clamp
     const dpr = window.devicePixelRatio || 1;
-    const cappedDpr = Math.min(dpr, 2);
+    const isMobileDevice = window.innerWidth < 768;
+    const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
     canvas.width = window.innerWidth * cappedDpr;
     canvas.height = window.innerHeight * cappedDpr;
     const ctx = canvas.getContext("2d");

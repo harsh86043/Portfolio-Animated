@@ -21,7 +21,7 @@ const contactSequenceConfig = {
   endFrame: 72,
   basePath: "/frames/contact-cta/",
   filename: (index: number) => `contact-cta_${String(index).padStart(4, "0")}.webp`,
-  holdAfterProgress: 0.85
+  holdAfterProgress: 0.78
 };
 
 export default function SecureTransmission() {
@@ -29,12 +29,19 @@ export default function SecureTransmission() {
   const [allFramesLoaded, setAllFramesLoaded] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
+  const [shouldStartPreload, setShouldStartPreload] = useState(false);
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const hasWebpRef = useRef(true);
   const currentFrameRef = useRef(0);
+
+  // Smooth lerping refs
+  const targetFrameRef = useRef<number>(0);
+  const currentFrameLerpRef = useRef<number>(0);
+  const lastDrawnFrameRef = useRef<number>(-1);
+  const rafIdRef = useRef<number | null>(null);
 
   // Content Refs for direct DOM style manipulation during scroll triggers
   const smallLabelRef = useRef<HTMLDivElement>(null);
@@ -52,21 +59,92 @@ export default function SecureTransmission() {
     return () => mediaQuery.removeEventListener("change", listener);
   }, []);
 
-  // Preload logic for frame sequence
+  // Trigger preloading 2000px before the Contact section enters the viewport
+  useEffect(() => {
+    if (isReducedMotion) return;
+
+    const trigger = ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: "top-=2000px top",
+      once: true,
+      onEnter: () => {
+        setShouldStartPreload(true);
+      }
+    });
+
+    return () => {
+      trigger.kill();
+    };
+  }, [isReducedMotion]);
+
+  // Helper to verify if an image is loaded
+  const isFrameLoaded = (index: number): boolean => {
+    const img = imagesRef.current[index];
+    return !!(img && img.src && img.complete && img.naturalWidth > 0);
+  };
+
+  // Safe fallback to nearest loaded frame
+  const getNearestLoadedFrameIndex = (targetIndex: number): number => {
+    if (isFrameLoaded(targetIndex)) {
+      return targetIndex;
+    }
+    const total = contactSequenceConfig.frameCount;
+    // Search outward to find closest loaded frame
+    for (let offset = 1; offset < total; offset++) {
+      const prev = targetIndex - offset;
+      const next = targetIndex + offset;
+      if (prev >= 0 && isFrameLoaded(prev)) return prev;
+      if (next < total && isFrameLoaded(next)) return next;
+    }
+    return 0;
+  };
+
+  // requestAnimationFrame render loop
+  const startRenderLoop = () => {
+    if (rafIdRef.current !== null) return;
+
+    const loop = () => {
+      const target = targetFrameRef.current;
+      const current = currentFrameLerpRef.current;
+      const diff = target - current;
+
+      if (Math.abs(diff) < 0.05) {
+        currentFrameLerpRef.current = target;
+        rafIdRef.current = null;
+        const rounded = Math.round(target);
+        if (rounded !== lastDrawnFrameRef.current) {
+          lastDrawnFrameRef.current = rounded;
+          triggerDraw(rounded);
+        }
+      } else {
+        const lerpFactor = 0.22;
+        currentFrameLerpRef.current = current + diff * lerpFactor;
+        const rounded = Math.round(currentFrameLerpRef.current);
+        if (rounded !== lastDrawnFrameRef.current) {
+          lastDrawnFrameRef.current = rounded;
+          triggerDraw(rounded);
+        }
+        rafIdRef.current = requestAnimationFrame(loop);
+      }
+    };
+
+    rafIdRef.current = requestAnimationFrame(loop);
+  };
+
+  // Preload logic for frame sequence (staged loading)
   useEffect(() => {
     const total = contactSequenceConfig.frameCount;
     const images: HTMLImageElement[] = [];
 
-    // Initialize the cache array
+    // Initialize the cache array with empty Image elements
     for (let i = 0; i < total; i++) {
-      const img = new Image();
-      img.src = `${contactSequenceConfig.basePath}${contactSequenceConfig.filename(i)}`;
-      images.push(img);
+      images.push(new Image());
     }
     imagesRef.current = images;
 
     // Load first frame immediately
     const firstImg = images[0];
+    firstImg.src = `${contactSequenceConfig.basePath}${contactSequenceConfig.filename(0)}`;
     const handleFirstFrameOk = () => {
       setFirstFrameLoaded(true);
       triggerDraw(0);
@@ -77,14 +155,16 @@ export default function SecureTransmission() {
     } else {
       firstImg.onload = handleFirstFrameOk;
       firstImg.onerror = () => {
-        // If frames are missing or fail to load, instantly swap to fallback vector graphics
+        // If frames fail to load, instantly swap to fallback vector graphics
         hasWebpRef.current = false;
         setFirstFrameLoaded(true);
         triggerDraw(0);
       };
     }
 
-    // Load remaining frames in background sequentially
+    // Only preload other frames if shouldStartPreload is true
+    if (!shouldStartPreload) return;
+
     let loaded = 1;
     const handleFrameOk = () => {
       loaded++;
@@ -96,6 +176,7 @@ export default function SecureTransmission() {
 
     for (let i = 1; i < total; i++) {
       const img = images[i];
+      img.src = `${contactSequenceConfig.basePath}${contactSequenceConfig.filename(i)}`;
       if (img.complete) {
         handleFrameOk();
       } else {
@@ -103,7 +184,7 @@ export default function SecureTransmission() {
         img.onerror = handleFrameOk; // Ensure we don't break on a missing frame
       }
     }
-  }, []);
+  }, [shouldStartPreload]);
 
   // Draw character or fallback vector
   const triggerDraw = (index: number) => {
@@ -115,9 +196,10 @@ export default function SecureTransmission() {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    // Scale canvas to match screen high DPI (DPR)
+    // Scale canvas to match screen high DPI (DPR) with mobile performance clamping
     const dpr = window.devicePixelRatio || 1;
-    const cappedDpr = Math.min(dpr, 2);
+    const isMobileDevice = window.innerWidth < 768;
+    const cappedDpr = isMobileDevice ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
     const targetW = width * cappedDpr;
     const targetH = height * cappedDpr;
 
@@ -134,7 +216,8 @@ export default function SecureTransmission() {
     const currentFrameIndex = Math.min(contactSequenceConfig.endFrame, Math.max(0, index));
     currentFrameRef.current = currentFrameIndex;
 
-    const img = imagesRef.current[currentFrameIndex];
+    const loadedIndex = getNearestLoadedFrameIndex(currentFrameIndex);
+    const img = imagesRef.current[loadedIndex];
 
     if (!hasWebpRef.current || !img || !img.complete || img.naturalWidth === 0) {
       drawFallbackVector(ctx, currentFrameIndex, width, height, isMobile);
@@ -336,10 +419,11 @@ export default function SecureTransmission() {
       const isMobile = window.innerWidth < 768;
 
       ScrollTrigger.create({
+        id: "contact-sequence",
         trigger: sectionRef.current,
         start: "top top",
-        end: isMobile ? "+=1400" : "+=1900",
-        scrub: true,
+        end: isMobile ? "+=1100" : "+=1500",
+        scrub: 0.25,
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
@@ -349,7 +433,9 @@ export default function SecureTransmission() {
           // Calculate frame based on custom layout parameters
           const playableProgress = Math.min(progress / contactSequenceConfig.holdAfterProgress, 1);
           const frameIndex = Math.round(playableProgress * 72);
-          triggerDraw(frameIndex);
+          
+          targetFrameRef.current = frameIndex;
+          startRenderLoop();
 
           // Calculate elements visibility threshold maps
           const opacityLabel = Math.max(0, Math.min(1, progress / 0.12));

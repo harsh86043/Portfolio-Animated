@@ -48,22 +48,14 @@ export default function IntroAboutSequence() {
 
         const tl = gsap.timeline({
           scrollTrigger: {
+            id: "intro-about-sequence",
             trigger: containerRef.current,
             start: "top top",
             end: "bottom bottom",
-            scrub: true,
+            scrub: 0.25,
             pin: viewportRef.current,
             anticipatePin: 1,
-            onUpdate: (self) => {
-              const progress = self.progress;
-              const currentFrame = Math.min(
-                totalFrames,
-                Math.max(1, Math.round(progress * (totalFrames - 1) + 1))
-              );
-              if (canvasRef.current) {
-                canvasRef.current.drawFrame(currentFrame);
-              }
-            }
+            invalidateOnRefresh: true
           }
         });
 
@@ -108,22 +100,14 @@ export default function IntroAboutSequence() {
 
         const tl = gsap.timeline({
           scrollTrigger: {
+            id: "intro-about-sequence",
             trigger: containerRef.current,
             start: "top top",
             end: "bottom bottom",
-            scrub: true,
+            scrub: 0.25,
             pin: viewportRef.current,
             anticipatePin: 1,
-            onUpdate: (self) => {
-              const progress = self.progress;
-              const currentFrame = Math.min(
-                totalFrames,
-                Math.max(1, Math.round(progress * (totalFrames - 1) + 1))
-              );
-              if (canvasRef.current) {
-                canvasRef.current.drawFrame(currentFrame);
-              }
-            }
+            invalidateOnRefresh: true
           }
         });
 
@@ -255,7 +239,19 @@ export default function IntroAboutSequence() {
             <div className="flex flex-wrap items-center justify-center gap-4 mb-6">
               <button
                 onClick={() => {
-                  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                  const trigger = ScrollTrigger.getById("intro-about-sequence");
+                  if (trigger) {
+                    const scrollPos = trigger.start + 1.0 * (trigger.end - trigger.start);
+                    gsap.to(window, {
+                      scrollTo: scrollPos,
+                      duration: 1.2,
+                      ease: "power2.inOut",
+                      onUpdate: () => ScrollTrigger.update(),
+                      onComplete: () => ScrollTrigger.update()
+                    });
+                  } else {
+                    window.scrollTo({ top: window.innerHeight * 2, behavior: "smooth" });
+                  }
                 }}
                 className="px-6 py-3 rounded-xl border border-[#ff4d00]/30 hover:border-[#ff4d00]/80 bg-[#ff4d00]/5 text-[#ff4d00] hover:text-white hover:bg-[#ff4d00]/15 font-mono text-[10px] tracking-widest uppercase font-bold transition-all duration-300 cursor-pointer shadow-orange-glow active:scale-95"
               >
